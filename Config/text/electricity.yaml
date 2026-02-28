@@ -1,0 +1,63 @@
+model:
+  target: Models.PaCoDi.diffusion_ddpm.PaCoDi_ddpm
+  params:
+    seq_length: 24
+    feature_size: 1
+    timesteps: 1000
+    sampling_timesteps: 1000
+    beta_schedule: 'cosine'
+    emb_size: 128
+    patch_size: 1
+    num_layers: 4
+
+solver:
+  base_lr: 5.0e-5
+  max_epochs: 10000
+  results_folder: ./Checkpoints_PaCoDi_etth
+  gradient_accumulate_every: 2
+  save_cycle: 10
+  ema:
+    decay: 0.995
+    update_interval: 10
+
+  scheduler:
+    target: engine.lr_sch.ReduceLROnPlateauWithWarmup
+    params:
+      factor: 0.5
+      patience: 3000
+      min_lr: 1.0e-6
+      threshold: 1.0e-2
+      threshold_mode: rel
+      warmup_lr: 2.0e-4
+      warmup: 500
+      verbose: False
+
+dataloader:
+  train_dataset:
+    target: Utils.Data_utils.T2S_dataset.T2SDataset
+    params:
+      name: embedding_cleaned_electricity_24
+      proportion: 1.0
+      data_root: ./Data/datasets/TSFragment-600K
+      window: 24
+      seed: 123
+      period: train
+
+  test_dataset:
+    target: Utils.Data_utils.T2S_dataset.T2SDataset
+    params:
+      name: embedding_cleaned_electricity_24
+      proportion: 0.9
+      data_root: ./Data/datasets/TSFragment-600K
+      window: 24
+      seed: 123
+      period: test
+      style: separate
+      distribution: geometric
+    coefficient: 1.0e-2
+    step_size: 5.0e-2
+    sampling_steps: 200
+
+  batch_size: 128
+  sample_size: 256
+  shuffle: True
