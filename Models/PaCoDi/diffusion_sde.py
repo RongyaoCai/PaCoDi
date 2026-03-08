@@ -11,15 +11,14 @@ def default(val, d):
         return val
     return d() if callable(d) else d
 
-
-class PaCoDi_SDE(nn.Module):
+class PaCoDi_sde(nn.Module):
     def __init__(
             self,
             seq_length,
             feature_size,
             timesteps=1000,
             sampling_timesteps=250,
-            beta_min=0.05,
+            beta_min=0.1,
             beta_max=20.0,
             cutoff_ratio=0.5,
             emb_size=128,
@@ -51,6 +50,8 @@ class PaCoDi_SDE(nn.Module):
             nn.ReLU(),
             nn.Linear(emb_size // 2, feature_size)
         )
+
+        self.text_projection = nn.Linear(128, emb_size)
 
     def get_beta(self, t):
         return self.beta_min + t * (self.beta_max - self.beta_min)
@@ -93,6 +94,7 @@ class PaCoDi_SDE(nn.Module):
         x_full[:, keep_idx, :] = x_cut
         return x_full
 
+
     def forward(self, data, **kwargs):
         device = self.device
         text_input = None
@@ -111,6 +113,7 @@ class PaCoDi_SDE(nn.Module):
         loss_dc = 0.0
         if text_emb is not None:
             real_dc = x.mean(dim=1, keepdim=True)
+            text_emb = self.text_projection(text_emb)
             pred_dc = self.dc_predictor(text_emb).unsqueeze(1)
             loss_dc = F.mse_loss(pred_dc, real_dc)
             x = x - real_dc
@@ -237,8 +240,13 @@ class PaCoDi_SDE(nn.Module):
             self._scatter_freq(xt_real, L_full, keep_idx),
             self._scatter_freq(xt_imag, L_full, keep_idx)
         )
+
+        x_freq_final = torch.complex(xt_real, xt_imag)
+
         x_final = torch.fft.irfft(x_freq_final, n=self.seq_length, dim=1)
         return x_final
+
+
 
     @torch.no_grad()
     def generate_text(self, batch_size=16, x_raw=None, cond=None, sampling_steps=50, cfg_scale=7.5):
@@ -248,6 +256,8 @@ class PaCoDi_SDE(nn.Module):
         L_f = keep_idx.numel()
 
         w_r, w_i = self._build_struct_weights(L_f, self.device)
+
+        cond = self.text_projection(cond)
 
         xt_real = torch.randn(batch_size, L_f, self.feature_size, device=self.device) * torch.sqrt(w_r)
         xt_imag = torch.randn(batch_size, L_f, self.feature_size, device=self.device) * torch.sqrt(w_i)

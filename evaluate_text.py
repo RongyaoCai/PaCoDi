@@ -19,14 +19,14 @@ def align_shapes(preds, truth):
         truth = truth.squeeze(-1)
     return preds, truth
 
-
 if __name__ == "__main__":
     experiments = [('etth1', 24)]
     csv_file = 'metrics_text.csv'
+    model_name = "pacodi_ddpm"
 
     for dataset, length in experiments:
         exp_name = f"{dataset}_{length}"
-        base_dir = f"./experiments/text/pacodi/{exp_name}"
+        base_dir = f"./experiments/text/{model_name}/{exp_name}"
         real_path = f"{base_dir}/samples/reals.npy"
         samples_dir = f"{base_dir}/samples"
 

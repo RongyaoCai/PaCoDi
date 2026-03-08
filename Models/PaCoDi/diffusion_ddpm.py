@@ -18,12 +18,9 @@ class PaCoDi_ddpm(nn.Module):
             feature_size,
             timesteps=1000,
             sampling_timesteps=1000,
-            beta_schedule='cosine',
             emb_size=128,
             patch_size=2,
             num_layers=4,
-            eta=0.,
-            use_ff=True,
             cutoff_ratio=0.5,
             device='cuda',
             **kwargs
@@ -50,11 +47,11 @@ class PaCoDi_ddpm(nn.Module):
 
         self.ddpm = DDPM(timesteps, device)
 
-        self.text_projection = nn.Linear(128, emb_size)
-
         self.sampling_timesteps = default(sampling_timesteps, timesteps)
         self.fast_sampling = self.sampling_timesteps < timesteps
         self.cutoff_ratio = cutoff_ratio
+
+        self.text_projection = nn.Linear(128, emb_size)
 
     def _build_struct_weights(self, L_f, device):
         w_r = torch.ones(L_f, device=device)
@@ -109,6 +106,7 @@ class PaCoDi_ddpm(nn.Module):
         loss_dc = 0.0
         if text_emb is not None:
             real_dc = x.mean(dim=1, keepdim=True)  # shape: [B, 1, M]
+            text_emb = self.text_projection(text_emb)
             pred_dc = self.dc_predictor(text_emb).unsqueeze(1)
             loss_dc = F.mse_loss(pred_dc, real_dc)
             x = x - real_dc
@@ -197,52 +195,6 @@ class PaCoDi_ddpm(nn.Module):
         x_final = torch.fft.irfft(x_freq_full, n=self.seq_length, dim=1)
         return x_final
 
-    # @torch.no_grad()
-    # def generate_text(self, batch_size=16, x_raw=None,cond=None, sampling_steps=50, cfg_scale=7.5):
-    #     """
-    #     text_conditional generation
-    #     """
-    #     device = self.device
-    #     L_f = self.seq_length // 2 + 1
-    #     M = self.feature_size
-    #     step = sampling_steps
-    #
-    #     if x_raw.ndim == 2:
-    #         x_raw = x_raw.unsqueeze(-1)
-    #     if x_raw.shape[1] > self.seq_length:
-    #         x_raw = x_raw[:, :self.seq_length]
-    #
-    #     cond = self.text_projection(cond)
-    #
-    #     x_raw_freq = torch.fft.rfft(x_raw, dim=1)
-    #
-    #     x_real = x_raw_freq.real.float()
-    #     x_imag = x_raw_freq.imag.float()
-    #
-    #     x_t_real = torch.randn_like(x_real).to(device)
-    #     x_t_imag = torch.randn_like(x_imag).to(device)
-    #
-    #     for j in tqdm(range(step), desc="Generating TS via Text"):
-    #
-    #         t_real = torch.full((x_t_real.size(0),), math.floor(step - 1 - j), dtype=torch.long, device=device)
-    #         t_imag = torch.full((x_t_imag.size(0),), math.floor(step - 1 - j), dtype=torch.long, device=device)
-    #
-    #         pred_uncond_real,pred_uncond_imag = self.model(input_r=x_t_real, input_i=x_t_imag, t=t_real, text_input=None)
-    #         pred_cond_real,pred_cond_imag = self.model(input_r=x_t_real, input_i=x_t_imag, t=t_real, text_input=cond)
-    #
-    #         pred_real = pred_uncond_real + cfg_scale * (pred_cond_real - pred_uncond_real)
-    #         pred_imag = pred_uncond_imag + cfg_scale * (pred_cond_imag - pred_uncond_imag)
-    #
-    #         x_t_real = self.ddpm.p_sample(x_t_real, pred_real, t_real)
-    #         x_t_imag = self.ddpm.p_sample(x_t_imag, pred_imag, t_imag)
-    #
-    #     x_freq_final = torch.complex(x_t_real, x_t_imag)
-    #     x_ac = torch.fft.irfft(x_freq_final, n=self.seq_length, dim=1)
-    #
-    #     pred_dc = self.dc_predictor(cond).unsqueeze(1)
-    #     x_final = x_ac + pred_dc
-    #
-    #     return x_final,x_raw
 
     @torch.no_grad()
     def generate_text(self, batch_size=16, x_raw=None,cond=None, sampling_steps=50, cfg_scale=7.5):
@@ -250,8 +202,6 @@ class PaCoDi_ddpm(nn.Module):
         text_conditional generation
         """
         device = self.device
-        L_f = self.seq_length // 2 + 1
-        M = self.feature_size
         step = sampling_steps
 
         if x_raw.ndim == 2:
@@ -259,9 +209,8 @@ class PaCoDi_ddpm(nn.Module):
         if x_raw.shape[1] > self.seq_length:
             x_raw = x_raw[:, :self.seq_length]
 
-        cond = self.text_projection(cond)
-
         x_raw_freq = torch.fft.rfft(x_raw, dim=1)
+        cond = self.text_projection(cond)
 
         x_real = x_raw_freq.real.float()
         x_imag = x_raw_freq.imag.float()
@@ -271,12 +220,11 @@ class PaCoDi_ddpm(nn.Module):
         x_real = self._gather_freq(x_real, keep_idx)
         x_imag = self._gather_freq(x_imag, keep_idx)
 
-        L_f = x_real.shape[1]
-
         x_t_real = torch.randn_like(x_real).to(device)
         x_t_imag = torch.randn_like(x_imag).to(device)
 
         for j in tqdm(range(step), desc="Generating TS via Text"):
+
             t_real = torch.full((x_t_real.size(0),), math.floor(step - 1 - j), dtype=torch.long, device=device)
             t_imag = torch.full((x_t_imag.size(0),), math.floor(step - 1 - j), dtype=torch.long, device=device)
 

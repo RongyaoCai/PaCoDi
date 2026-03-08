@@ -8,7 +8,7 @@ model:
     beta_schedule: 'cosine'
     emb_size: 128
     patch_size: 4
-    num_layers: 4         # Transformer 层数
+    num_layers: 4
 
 
 solver:
@@ -16,7 +16,7 @@ solver:
   max_epochs: 12000
   results_folder: ./Checkpoints_sine
   gradient_accumulate_every: 2
-  save_cycle: 1200  # max_epochs // 10
+  save_cycle: 1200
   ema:
     decay: 0.995
     update_interval: 10

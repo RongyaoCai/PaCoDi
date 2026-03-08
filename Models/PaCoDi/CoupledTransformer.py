@@ -120,7 +120,6 @@ class CoupledTransformer(nn.Module):
         # Time/Condition Embedding
         t = self.time_emb(t)
         if text_input is not None:
-            text_input = self.text_projection(text_input)
             c = t + text_input
         else:
             c = t

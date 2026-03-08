@@ -177,7 +177,7 @@ class Trainer(object):
 
                 actual_batch_size = cond.shape[0]
 
-                sample,real = self.ema.ema_model.generate_text(
+                sample, real = self.ema.ema_model.generate_text(
                     batch_size=actual_batch_size,
                     x_raw = x_raw,
                     cond=cond,

@@ -1,13 +1,13 @@
 model:
-  target: Models.PaCoDi.diffusion_ddpm.PaCoDi_ddpm
+  target: Models.PaCoDi.diffusion_sde.PaCoDi_sde
   params:
     seq_length: 24
     feature_size: 7       # ETTh1/ETTh2 数据集标准特征数（含目标 OT）
     timesteps: 1000
     sampling_timesteps: 1000
     beta_schedule: 'cosine'
-    emb_size: 256
-    patch_size: 8
+    emb_size: 128
+    patch_size: 1
     num_layers: 4         # Transformer 层数
 
 solver:

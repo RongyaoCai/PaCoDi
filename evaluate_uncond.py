@@ -149,6 +149,8 @@ if __name__ == "__main__":
 
     csv_file = "metrics_uncond.csv"
 
+    model_name = "pacodi_sde"
+
     rename_map = {
         'Cross_Corr': 'Correlational Score',
         'Context_FID': 'Context-FID Score',
@@ -167,11 +169,11 @@ if __name__ == "__main__":
     for dataset, seq_len in experiments:
         exp_name = f"{dataset}_{seq_len}"
         if dataset == 'sines':
-            base_dir = f"./experiments/uncond/pacodi/{exp_name}"
+            base_dir = f"./experiments/uncond/{model_name}/{exp_name}"
             real_path = f"{base_dir}/samples/truth/ground_truth_train.npy"
             fake_path = f"{base_dir}/samples/samples.npy"
         else:
-            base_dir = f"./experiments/uncond/pacodi/{exp_name}"
+            base_dir = f"./experiments/uncond/{model_name}/{exp_name}"
             real_path = f"{base_dir}/samples/truth/norm_truth_train.npy"
             fake_path = f"{base_dir}/samples/samples.npy"
 
